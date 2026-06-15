@@ -1,0 +1,21 @@
+{
+  "team": "TranQuangHuy",
+  "phase": "private",
+  "headline": 91.42,
+  "sub": {
+    "correct": 0.57,
+    "quality": 0.7279,
+    "error": 1.0,
+    "latency": 0.5823,
+    "cost": 0.7973,
+    "drift": 0.7167,
+    "prompt": 0.7571
+  },
+  "diag_f1": 0.924,
+  "n": 80,
+  "n_correct": 39,
+  "judge_mode": "offline",
+  "weights_hash": "e81a8ed58d93",
+  "key_hash": "7e3905b75db0",
+  "sig": "1e161484aa5445a28728a9abfcddf4ce4240a20ad49ff5f7a2f03e41efbc7310"
+}
