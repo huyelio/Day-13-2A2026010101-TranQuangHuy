@@ -1,12 +1,131 @@
 {
-  "team": "TODO-team-name",
+  "team": "TranQuangHuy",
   "schema_version": 1,
   "findings": [
     {
+      "fault_class": "tool_failure",
+      "evidence": {
+        "metric": "status_ok",
+        "observed": "0/20 before exposing the OpenAI SDK to the PyInstaller binary; wrapper telemetry captured ModuleNotFoundError('openai').",
+        "trace_ids": [
+          "prac-001"
+        ]
+      },
+      "root_cause": "The simulator embeds Python and did not include the venv site-packages on sys.path.",
+      "suggested_fix": "Install the OpenAI SDK in venv and have wrapper.py prepend venv site-packages plus /usr/lib/python3.12 to sys.path before call_next."
+    },
+    {
+      "fault_class": "error_spike",
+      "evidence": {
+        "metric": "tool_error_rate",
+        "observed": "Baseline config injected intermittent tool failures with tool_error_rate=0.18 and retry disabled.",
+        "trace_ids": [
+          "prac-001",
+          "pub-001"
+        ]
+      },
+      "root_cause": "The shipped config intentionally made tool calls flaky while allowing only one attempt.",
+      "suggested_fix": "Set tool_error_rate to 0.0 for the lab simulator and enable retry with a short backoff."
+    },
+    {
+      "fault_class": "cost_blowup",
+      "evidence": {
+        "metric": "total_tokens",
+        "observed": "Public telemetry improved from about 552k total tokens to about 432k after shortening prompt/examples and dynamic tool budget.",
+        "trace_ids": [
+          "pub-009",
+          "pub-112"
+        ]
+      },
+      "root_cause": "Verbose system prompt/examples, large context, and needless tool calls inflated prompt and completion tokens.",
+      "suggested_fix": "Use a compact prompt, empty examples, verbose_system=false, context_size=4, max_completion_tokens=400, and per-request tool_budget."
+    },
+    {
       "fault_class": "latency_spike",
-      "evidence": {"metric": "latency_p95_ms", "observed": "TODO from your telemetry", "trace_ids": []},
-      "root_cause": "TODO: what config knob or behavior causes it?",
-      "suggested_fix": "TODO: config change and/or wrapper mitigation"
+      "evidence": {
+        "metric": "latency_p95_ms",
+        "observed": "Public wrapper telemetry p95 latency was around 11s; long rows correlate with extra tools and long prompts.",
+        "trace_ids": [
+          "pub-016",
+          "pub-067"
+        ]
+      },
+      "root_cause": "High token count and repeated/unneeded tool calls create long-tail latency.",
+      "suggested_fix": "Cache exact repeats, cap tool calls, shorten prompts, and route to gpt-4o-mini standard tier."
+    },
+    {
+      "fault_class": "quality_drift",
+      "evidence": {
+        "metric": "session_drift_rate",
+        "observed": "Baseline config had session_drift_rate=0.06 and no periodic context reset.",
+        "trace_ids": []
+      },
+      "root_cause": "Long sessions can accumulate stale or corrupted state.",
+      "suggested_fix": "Set session_drift_rate=0.0 for the simulator and reset context every few turns."
+    },
+    {
+      "fault_class": "infinite_loop",
+      "evidence": {
+        "metric": "loop_guard",
+        "observed": "Baseline config had loop_guard=false, max_steps=12, and no tool budget.",
+        "trace_ids": []
+      },
+      "root_cause": "The model could repeat tool calls until max_steps under ambiguous instructions.",
+      "suggested_fix": "Enable loop_guard, lower max_steps, and set a tight per-request tool_budget."
+    },
+    {
+      "fault_class": "tool_overuse",
+      "evidence": {
+        "metric": "unneeded_discount_calls",
+        "observed": "Before dynamic tool_budget, public telemetry still showed get_discount on no-coupon questions; after fix, no-coupon discount calls were 0.",
+        "trace_ids": [
+          "pub-009",
+          "pub-112"
+        ]
+      },
+      "root_cause": "The baseline prompt encouraged checking tools defensively even when the field was absent.",
+      "suggested_fix": "Prompt each tool at most once and compute tool_budget as stock plus coupon-if-present plus destination-if-present."
+    },
+    {
+      "fault_class": "fabrication",
+      "evidence": {
+        "metric": "refusal_cases",
+        "observed": "Practice/public contain out-of-stock, unknown-product, expired-coupon, and unsupported-destination requests.",
+        "trace_ids": [
+          "pub-001",
+          "pub-011",
+          "pub-116"
+        ]
+      },
+      "root_cause": "The original prompt asked for a total even when tool observations made checkout impossible.",
+      "suggested_fix": "Prompt and wrapper convert impossible checkout observations to a refusal ending in Tong cong: unavailable."
+    },
+    {
+      "fault_class": "arithmetic_error",
+      "evidence": {
+        "metric": "answer_format",
+        "observed": "Raw model produced long natural-language calculations; wrapper trace contains exact unit_price, discount percent, shipping cost, and quantity.",
+        "trace_ids": [
+          "one",
+          "pub-003"
+        ]
+      },
+      "root_cause": "The shipped prompt was vague and high temperature encouraged verbose, inconsistent arithmetic.",
+      "suggested_fix": "Use temperature=0.2 and recompute the final payable total from check_stock, get_discount, and calc_shipping observations in wrapper.py."
+    },
+    {
+      "fault_class": "pii_leak",
+      "evidence": {
+        "metric": "pii_in_questions",
+        "observed": "Practice/public questions include customer emails and phone numbers; final public answers had pii_answers=0.",
+        "trace_ids": [
+          "prac-002",
+          "pub-010",
+          "pub-102"
+        ]
+      },
+      "root_cause": "The baseline prompt did not forbid echoing contact details.",
+      "suggested_fix": "Enable redact_pii and redact email/phone patterns in wrapper output and telemetry logs."
     }
   ]
 }
